@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Answer generation
     answer_min_words: int = 200
     answer_max_words: int = 800
-    gemini_model: str = "gemini-2.5-pro-preview-05-06"
+    gemini_model: str = "gemini-3.1-pro-preview"
 
     # Question discovery keywords organized by category
     @property
