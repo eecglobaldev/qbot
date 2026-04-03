@@ -84,7 +84,9 @@ SELECTORS = {
         'a:has-text("Answer")',
         '[data-functional-selector="answer-button"]',
         'button[aria-label="Answer"]',
+        'button.q-click-wrapper:has-text("Answer")',
         '.q-click-wrapper:has-text("Answer")',
+        '#mainContent button.q-click-wrapper:has-text("Answer")',
         # The inline answer prompt area
         '[class*="AnswerStory"] [contenteditable="true"]',
         '[placeholder*="Write your answer"]',
@@ -110,25 +112,32 @@ SELECTORS = {
         '[class*="puppeteer_test_submit_button"]',
         'button:has-text("Post")',
         'button:has-text("Submit")',
+        'button:has-text("Add Answer")',
         'button[data-functional-selector="submit-button"]',
         '[class*="SubmitButton"] button',
         # Quora sometimes wraps in a q-click-wrapper
         '.q-click-wrapper button:has-text("Post")',
         '.q-click-wrapper button:has-text("Submit")',
+        # Inside modal context (Quora sometimes opens answer in a modal)
+        '.modal_content_inner button:has-text("Post")',
+        '[role="dialog"] button:has-text("Post")',
+        '[aria-modal="true"] button:has-text("Post")',
         'button[type="submit"]:visible',
     ],
 
     # --- CAPTCHA detection ---
     "captcha_indicator": [
+        'iframe[src*="recaptcha"]',  # Google reCAPTCHA (most common on Quora)
+        'iframe[title*="reCAPTCHA"]',
         'iframe[src*="captcha"]',
-        'iframe[src*="recaptcha"]',
         'iframe[src*="hcaptcha"]',
+        'iframe[src*="challenges.cloudflare.com"]',  # Cloudflare Turnstile
+        '#g-recaptcha',
+        '.g-recaptcha',
+        '[data-sitekey]',
         '[class*="captcha"]',
         '[id*="captcha"]',
         '[class*="Captcha"]',
-        '#recaptcha',
-        '.g-recaptcha',
-        '[data-sitekey]',
     ],
 
     # --- Error / restriction detection ---
@@ -136,18 +145,25 @@ SELECTORS = {
         '[class*="puppeteer_test_error"]',
         '[class*="ErrorMessage"]',
         '[role="alert"]',
+        '[aria-live="assertive"]',
         '[class*="error_message"]',
         '.qu-color--red_error',
         '[class*="FormError"]',
+        'div[class*="banner"][class*="error"]',
     ],
 
     # --- Account restriction / ban detection ---
     "restriction_indicator": [
-        'text="Your account has been"',
-        'text="restricted"',
-        'text="suspended"',
-        'text="temporarily blocked"',
-        'text="violated"',
+        ':text("Your account has been")',
+        ':text("restricted")',
+        ':text("suspended")',
+        ':text("temporarily blocked")',
+        ':text("violated")',
+        ':text("rate limit")',
+        ':text("too many requests")',
+        ':text("unusual activity")',
+        ':text("try again later")',
+        ':text("something went wrong")',
         '[class*="BanNotice"]',
         '[class*="RestrictedNotice"]',
     ],
@@ -155,17 +171,44 @@ SELECTORS = {
     # --- Topic page: question links ---
     "topic_question_links": [
         '[class*="puppeteer_test_question_title"] a',
+        'div.q-text.qu-dynamicFontSize--regular_title a',
+        'div.q-text.qu-dynamicFontSize--regular_title',
         'a[class*="question_link"]',
         '.q-click-wrapper a[href*="/"]',
         'span[class*="QuestionText"] a',
         'a[href]:has(span[class*="q-text"])',
     ],
 
+    # --- Answer content (for scraping existing answers) ---
+    "answer_content": [
+        'div.puppeteer_test_answer_content',
+        'div.q-box.spacing_log_answer_content.puppeteer_test_answer_content',
+        'div.spacing_log_answer_content',
+    ],
+
     # --- "Read more" / "Continue reading" button ---
     "read_more_button": [
+        'button.puppeteer_test_read_more_button',
         '[class*="puppeteer_test_read_more_button"]',
         'button:has-text("Continue Reading")',
         'button:has-text("(more)")',
+    ],
+
+    # --- Promoted/ad answers to skip ---
+    "promoted_answer": [
+        'div.q-box.dom_annotate_ad_promoted_answer',
+        'div.dom_annotate_ad_promoted_answer',
+        '[class*="promoted"]',
+        ':text("Promoted")',
+    ],
+
+    # --- Modals (answer editor sometimes opens in a modal) ---
+    "modal": [
+        '[role="dialog"]',
+        '[aria-modal="true"]',
+        '[class*="modal_content"]',
+        '[class*="ModalContainerInternal"]',
+        '[class*="Modal"]',
     ],
 }
 
@@ -392,11 +435,18 @@ async def post_answer(page: Page, question_url: str, answer_text: str) -> dict:
             else:
                 await answer_btn.click()
                 await human_like_delay(page, 2000, 4000)
+
+                # Check if a modal opened (Quora sometimes opens editor in a modal)
+                modal = await _find_element(page, "modal", timeout=2000)
+                if modal:
+                    logger.debug("Answer editor opened in a modal")
         else:
             # Sometimes the editor is already visible on the page
             logger.info("No explicit answer button found, looking for editor directly")
 
         # Step 2: Find the answer editor
+        # Note: Quora uses contenteditable divs, NOT textarea.
+        # You CANNOT use .fill() — must click + keyboard.type()
         editor = await _find_element(page, "answer_editor", timeout=8000)
         if not editor:
             result["error"] = "Could not find answer editor"
