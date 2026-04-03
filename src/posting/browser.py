@@ -76,37 +76,108 @@ async def create_stealth_context(
     if proxy_url:
         context_kwargs["proxy"] = {"server": proxy_url}
 
+    # Load saved session state if available
+    storage_state = None
     if profile_path:
-        # Use persistent context for maintaining login sessions
         Path(profile_path).mkdir(parents=True, exist_ok=True)
-        context = await browser.new_context(storage_state=profile_path + "/state.json" if Path(profile_path + "/state.json").exists() else None, **context_kwargs)
-    else:
-        context = await browser.new_context(**context_kwargs)
+        state_file = Path(profile_path) / "state.json"
+        if state_file.exists():
+            storage_state = str(state_file)
+            logger.info(f"Loading saved session from {state_file}")
+
+    if storage_state:
+        context_kwargs["storage_state"] = storage_state
+
+    context = await browser.new_context(**context_kwargs)
 
     # Inject stealth scripts to avoid detection
     await context.add_init_script("""
-        // Override navigator.webdriver
+        // Override navigator.webdriver — primary automation flag
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        delete navigator.__proto__.webdriver;
 
-        // Override chrome runtime
-        window.chrome = { runtime: {} };
+        // Override chrome runtime to look like a real Chrome browser
+        window.chrome = {
+            runtime: {
+                onMessage: { addListener: () => {}, removeListener: () => {} },
+                sendMessage: () => {},
+                connect: () => {},
+            },
+            loadTimes: () => ({}),
+            csi: () => ({}),
+        };
 
-        // Override permissions
+        // Override permissions API
         const originalQuery = window.navigator.permissions.query;
         window.navigator.permissions.query = (parameters) =>
             parameters.name === 'notifications'
                 ? Promise.resolve({ state: Notification.permission })
                 : originalQuery(parameters);
 
-        // Override plugins length
+        // Override plugins to look like a real browser
         Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5],
+            get: () => {
+                const plugins = [
+                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
+                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+                    { name: 'Native Client', filename: 'internal-nacl-plugin' },
+                ];
+                plugins.length = 3;
+                return plugins;
+            },
         });
 
         // Override languages
         Object.defineProperty(navigator, 'languages', {
             get: () => ['en-US', 'en'],
         });
+
+        // Override connection info (looks more real)
+        Object.defineProperty(navigator, 'connection', {
+            get: () => ({
+                effectiveType: '4g',
+                rtt: 50,
+                downlink: 10,
+                saveData: false,
+            }),
+        });
+
+        // Prevent iframe-based detection
+        Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+            get: function () {
+                return window;
+            },
+        });
+
+        // Override toString to hide native code patches
+        const origToString = Function.prototype.toString;
+        Function.prototype.toString = function () {
+            if (this === Function.prototype.toString) return 'function toString() { [native code] }';
+            if (this === navigator.permissions.query) return 'function query() { [native code] }';
+            return origToString.call(this);
+        };
+
+        // Canvas fingerprint randomization (slight noise)
+        const origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+            const ctx = origGetContext.call(this, type, attrs);
+            if (type === '2d' && ctx) {
+                const origFillText = ctx.fillText.bind(ctx);
+                ctx.fillText = function (text, x, y, maxWidth) {
+                    // Add sub-pixel shift to create unique but consistent fingerprint
+                    return origFillText(text, x + 0.001, y, maxWidth);
+                };
+            }
+            return ctx;
+        };
+
+        // WebGL vendor/renderer spoof
+        const getParameter = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function (param) {
+            if (param === 37445) return 'Intel Inc.';
+            if (param === 37446) return 'Intel Iris OpenGL Engine';
+            return getParameter.call(this, param);
+        };
     """)
 
     return context

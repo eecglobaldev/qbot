@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.config import settings
-from src.database import Answer, Persona, Question, QuestionStatus, get_db, init_db
+from src.database import Answer, Persona, Question, QuestionStatus, QuoraAccount, AccountHealth, get_db, init_db
 from src.generation.generator import generate_answer, regenerate_answer
 from src.monitoring.health import check_alerts, get_recent_activity, get_system_health
 from src.personas.matcher import match_persona_to_question
@@ -41,6 +41,33 @@ class AnswerReview(BaseModel):
 class GenerateRequest(BaseModel):
     question_id: int
     persona_id: int | None = None
+
+
+class PersonaUpdate(BaseModel):
+    name: str | None = None
+    title: str | None = None
+    bio: str | None = None
+    expertise_areas: str | None = None
+    writing_style: str | None = None
+    is_active: bool | None = None
+
+
+class AccountCreate(BaseModel):
+    persona_id: int
+    email: str
+    password_ref: str = ""  # reference key to retrieve password from secrets manager
+    browser_profile_path: str = ""
+    proxy_url: str = ""
+    notes: str = ""
+
+
+class AccountUpdate(BaseModel):
+    email: str | None = None
+    password_ref: str | None = None
+    health: str | None = None
+    browser_profile_path: str | None = None
+    proxy_url: str | None = None
+    notes: str | None = None
 
 
 # --- Startup ---
@@ -226,10 +253,13 @@ async def review_answer(answer_id: int, review: AnswerReview):
 
 
 @app.get("/api/personas")
-async def list_personas():
+async def list_personas(include_inactive: bool = False):
     db = get_db()
     try:
-        personas = db.query(Persona).filter(Persona.is_active == True).all()
+        query = db.query(Persona)
+        if not include_inactive:
+            query = query.filter(Persona.is_active == True)
+        personas = query.all()
         return {
             "personas": [
                 {
@@ -237,13 +267,230 @@ async def list_personas():
                     "name": p.name,
                     "slug": p.slug,
                     "title": p.title,
+                    "bio": p.bio,
                     "expertise_areas": p.expertise_areas.split(","),
+                    "writing_style": p.writing_style,
                     "daily_post_count": p.daily_post_count,
                     "is_active": p.is_active,
+                    "accounts": [
+                        {
+                            "id": a.id,
+                            "email": a.email,
+                            "health": a.health,
+                            "posts_today": a.posts_today,
+                            "total_posts": a.total_posts,
+                            "last_active": a.last_active.isoformat() if a.last_active else None,
+                            "browser_profile_path": a.browser_profile_path,
+                            "proxy_url": a.proxy_url,
+                            "notes": a.notes,
+                        }
+                        for a in p.accounts
+                    ],
                 }
                 for p in personas
             ]
         }
+    finally:
+        db.close()
+
+
+@app.get("/api/personas/{persona_id}")
+async def get_persona(persona_id: int):
+    db = get_db()
+    try:
+        persona = db.query(Persona).filter(Persona.id == persona_id).first()
+        if not persona:
+            raise HTTPException(404, "Persona not found")
+        return {
+            "id": persona.id,
+            "name": persona.name,
+            "slug": persona.slug,
+            "title": persona.title,
+            "bio": persona.bio,
+            "expertise_areas": persona.expertise_areas,
+            "writing_style": persona.writing_style,
+            "is_active": persona.is_active,
+            "daily_post_count": persona.daily_post_count,
+            "last_post_date": persona.last_post_date,
+            "accounts": [
+                {
+                    "id": a.id,
+                    "email": a.email,
+                    "health": a.health,
+                    "posts_today": a.posts_today,
+                    "total_posts": a.total_posts,
+                    "last_active": a.last_active.isoformat() if a.last_active else None,
+                    "browser_profile_path": a.browser_profile_path,
+                    "proxy_url": a.proxy_url,
+                    "notes": a.notes,
+                }
+                for a in persona.accounts
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.put("/api/personas/{persona_id}")
+async def update_persona(persona_id: int, update: PersonaUpdate):
+    """Update persona details (name, title, bio, expertise, writing style, active status)."""
+    db = get_db()
+    try:
+        persona = db.query(Persona).filter(Persona.id == persona_id).first()
+        if not persona:
+            raise HTTPException(404, "Persona not found")
+
+        if update.name is not None:
+            persona.name = update.name
+        if update.title is not None:
+            persona.title = update.title
+        if update.bio is not None:
+            persona.bio = update.bio
+        if update.expertise_areas is not None:
+            persona.expertise_areas = update.expertise_areas
+        if update.writing_style is not None:
+            persona.writing_style = update.writing_style
+        if update.is_active is not None:
+            persona.is_active = update.is_active
+
+        db.commit()
+        return {"status": "ok", "persona_id": persona.id, "name": persona.name}
+    finally:
+        db.close()
+
+
+# --- API: Quora Accounts ---
+
+
+@app.get("/api/accounts")
+async def list_accounts():
+    db = get_db()
+    try:
+        accounts = db.query(QuoraAccount).all()
+        return {
+            "accounts": [
+                {
+                    "id": a.id,
+                    "persona_id": a.persona_id,
+                    "persona_name": a.persona.name if a.persona else "",
+                    "email": a.email,
+                    "health": a.health,
+                    "posts_today": a.posts_today,
+                    "total_posts": a.total_posts,
+                    "last_active": a.last_active.isoformat() if a.last_active else None,
+                    "browser_profile_path": a.browser_profile_path,
+                    "proxy_url": a.proxy_url,
+                    "notes": a.notes,
+                }
+                for a in accounts
+            ]
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/accounts")
+async def create_account(account: AccountCreate):
+    """Add a new Quora account linked to a persona."""
+    db = get_db()
+    try:
+        persona = db.query(Persona).filter(Persona.id == account.persona_id).first()
+        if not persona:
+            raise HTTPException(404, "Persona not found")
+
+        # Check for duplicate email
+        existing = db.query(QuoraAccount).filter(QuoraAccount.email == account.email).first()
+        if existing:
+            raise HTTPException(400, f"Account with email {account.email} already exists")
+
+        new_account = QuoraAccount(
+            persona_id=account.persona_id,
+            email=account.email,
+            health=AccountHealth.HEALTHY,
+            browser_profile_path=account.browser_profile_path or f"browser_data/{persona.slug}",
+            proxy_url=account.proxy_url,
+            notes=account.notes,
+        )
+        db.add(new_account)
+
+        # Also update the persona's quora_email if not set
+        if not persona.quora_email:
+            persona.quora_email = account.email
+        if account.password_ref:
+            persona.quora_password_ref = account.password_ref
+
+        db.commit()
+        db.refresh(new_account)
+        return {
+            "status": "ok",
+            "account_id": new_account.id,
+            "email": new_account.email,
+            "persona": persona.name,
+        }
+    finally:
+        db.close()
+
+
+@app.put("/api/accounts/{account_id}")
+async def update_account(account_id: int, update: AccountUpdate):
+    """Update Quora account details (email, credentials ref, health, proxy, etc.)."""
+    db = get_db()
+    try:
+        account = db.query(QuoraAccount).filter(QuoraAccount.id == account_id).first()
+        if not account:
+            raise HTTPException(404, "Account not found")
+
+        if update.email is not None:
+            account.email = update.email
+        if update.password_ref is not None:
+            # Update the persona's password reference too
+            persona = db.query(Persona).filter(Persona.id == account.persona_id).first()
+            if persona:
+                persona.quora_password_ref = update.password_ref
+        if update.health is not None:
+            if update.health not in [h.value for h in AccountHealth]:
+                raise HTTPException(400, f"Invalid health status. Must be one of: {[h.value for h in AccountHealth]}")
+            account.health = update.health
+        if update.browser_profile_path is not None:
+            account.browser_profile_path = update.browser_profile_path
+        if update.proxy_url is not None:
+            account.proxy_url = update.proxy_url
+        if update.notes is not None:
+            account.notes = update.notes
+
+        db.commit()
+        return {"status": "ok", "account_id": account.id}
+    finally:
+        db.close()
+
+
+@app.delete("/api/accounts/{account_id}")
+async def delete_account(account_id: int):
+    """Remove a Quora account."""
+    db = get_db()
+    try:
+        account = db.query(QuoraAccount).filter(QuoraAccount.id == account_id).first()
+        if not account:
+            raise HTTPException(404, "Account not found")
+        db.delete(account)
+        db.commit()
+        return {"status": "ok", "deleted_account_id": account_id}
+    finally:
+        db.close()
+
+
+@app.post("/api/accounts/{account_id}/reset-health")
+async def reset_account_health(account_id: int):
+    """Reset an account's health status back to healthy."""
+    db = get_db()
+    try:
+        account = db.query(QuoraAccount).filter(QuoraAccount.id == account_id).first()
+        if not account:
+            raise HTTPException(404, "Account not found")
+        account.health = AccountHealth.HEALTHY
+        account.posts_today = 0
+        db.commit()
+        return {"status": "ok", "account_id": account.id, "health": account.health}
     finally:
         db.close()
 

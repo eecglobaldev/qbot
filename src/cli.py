@@ -151,6 +151,18 @@ def cmd_status():
         db.close()
 
 
+def cmd_post(headless: bool = True, dry_run: bool = False):
+    """Run the posting cycle for approved answers."""
+    from src.posting.runner import run_posting_cycle
+
+    init_db()
+    if dry_run:
+        print("Running in DRY RUN mode — no answers will actually be posted.\n")
+    else:
+        print("Starting posting cycle for approved answers...\n")
+    asyncio.run(run_posting_cycle(headless=headless, dry_run=dry_run))
+
+
 def main():
     parser = argparse.ArgumentParser(description="EEC Quora Bot — Automated Quora Marketing Tool")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -164,6 +176,11 @@ def main():
     # generate
     gen_parser = subparsers.add_parser("generate", help="Generate answers for discovered questions")
     gen_parser.add_argument("--question-id", type=int, help="Generate for a specific question ID")
+
+    # post
+    post_parser = subparsers.add_parser("post", help="Post approved answers to Quora")
+    post_parser.add_argument("--visible", action="store_true", help="Run browser in visible (non-headless) mode")
+    post_parser.add_argument("--dry-run", action="store_true", help="Simulate posting without actually submitting")
 
     # dashboard
     subparsers.add_parser("dashboard", help="Start the web dashboard")
@@ -179,6 +196,8 @@ def main():
         cmd_discover()
     elif args.command == "generate":
         cmd_generate(getattr(args, "question_id", None))
+    elif args.command == "post":
+        cmd_post(headless=not getattr(args, "visible", False), dry_run=getattr(args, "dry_run", False))
     elif args.command == "dashboard":
         cmd_dashboard()
     elif args.command == "status":

@@ -79,6 +79,17 @@
 
         .empty-state { text-align: center; padding: 40px; color: #9ca3af; }
         .answer-preview { max-height: 150px; overflow-y: auto; font-size: 13px; line-height: 1.5; color: #4b5563; background: #f9fafb; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+
+        /* Form inputs */
+        select, input[type="text"], input[type="email"], textarea { font-family: inherit; font-size: 14px; }
+        select:focus, input:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .tabs { overflow-x: auto; }
+            #add-account-form { grid-template-columns: 1fr !important; }
+        }
     </style>
 </head>
 <body>
@@ -94,6 +105,17 @@
     </div>
 
     <div class="container">
+        <!-- Navigation Tabs -->
+        <div class="tabs" id="main-tabs">
+            <div class="tab active" onclick="showTab('overview')">Overview</div>
+            <div class="tab" onclick="showTab('personas')">Personas & Accounts</div>
+            <div class="tab" onclick="showTab('review')">Review Queue</div>
+            <div class="tab" onclick="showTab('questions')">Questions</div>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div id="tab-overview">
+
         <!-- Alerts -->
         {% if alerts %}
         <div class="alerts">
@@ -172,7 +194,79 @@
             </div>
         </div>
 
-        <!-- Recent Activity -->
+        </div><!-- end tab-overview -->
+
+        <!-- PERSONAS & ACCOUNTS TAB -->
+        <div id="tab-personas" style="display:none;">
+            <div class="section">
+                <h2>Expert Personas</h2>
+                <p style="color:#666; font-size:13px; margin-bottom:16px;">Manage expert personas, their Quora accounts, credentials, and writing styles.</p>
+                <div id="personas-list">
+                    <div class="empty-state">Loading personas...</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Add Quora Account</h2>
+                <form id="add-account-form" onsubmit="addAccount(event)" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Persona</label>
+                        <select id="acc-persona-id" required style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                            <option value="">Select persona...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Quora Email</label>
+                        <input type="email" id="acc-email" required placeholder="persona@email.com" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Password Reference Key</label>
+                        <input type="text" id="acc-password-ref" placeholder="e.g. QUORA_PASS_PRIYA (env var name)" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Proxy URL (optional)</label>
+                        <input type="text" id="acc-proxy" placeholder="http://user:pass@host:port" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Notes</label>
+                        <input type="text" id="acc-notes" placeholder="Any notes about this account..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <button type="submit" class="btn btn-primary">Add Account</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2>All Quora Accounts</h2>
+                <div id="accounts-list">
+                    <div class="empty-state">Loading accounts...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REVIEW QUEUE TAB -->
+        <div id="tab-review" style="display:none;">
+            <div class="section">
+                <h2>Review Queue</h2>
+                <div id="review-queue-tab">
+                    <div class="empty-state">Loading review queue...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUESTIONS TAB -->
+        <div id="tab-questions" style="display:none;">
+            <div class="section">
+                <h2>Discovered Questions</h2>
+                <div id="questions-list-tab">
+                    <div class="empty-state">Loading questions...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity (always visible at bottom of overview) -->
+        <div id="activity-section">
         <div class="section">
             <h2>Recent Activity</h2>
             <table>
@@ -205,9 +299,320 @@
                 </tbody>
             </table>
         </div>
+        </div><!-- end activity-section -->
     </div>
 
     <script>
+        // --- Tab Navigation ---
+        function showTab(tabName) {
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            event.target.classList.add('active');
+
+            // Show activity section only on overview
+            document.getElementById('activity-section').style.display = tabName === 'overview' ? 'block' : 'none';
+
+            // Load tab-specific data
+            if (tabName === 'personas') { loadPersonas(); loadAccounts(); loadPersonaDropdown(); }
+            if (tabName === 'review') { loadReviewQueueTab(); }
+            if (tabName === 'questions') { loadQuestionsTab(); }
+        }
+
+        // --- Persona Management ---
+        async function loadPersonas() {
+            try {
+                const res = await fetch('/api/personas?include_inactive=true');
+                const data = await res.json();
+                const container = document.getElementById('personas-list');
+
+                if (!data.personas || data.personas.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No personas configured</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const p of data.personas) {
+                    const accountBadges = (p.accounts || []).map(a =>
+                        `<span class="badge ${a.health}" style="margin-right:4px;">${a.email} (${a.health})</span>`
+                    ).join('') || '<span style="color:#9ca3af; font-size:12px;">No accounts linked</span>';
+
+                    html += `
+                    <div style="border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:12px; ${!p.is_active ? 'opacity:0.5;' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div style="flex:1;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <strong style="font-size:16px;">${p.name}</strong>
+                                    <span class="badge ${p.is_active ? 'healthy' : 'banned'}">${p.is_active ? 'Active' : 'Inactive'}</span>
+                                    <span style="color:#666; font-size:12px;">Posts today: ${p.daily_post_count}</span>
+                                </div>
+                                <div style="color:#666; font-size:13px; margin-top:2px;">${p.title}</div>
+                                <div style="margin-top:8px; font-size:13px; color:#4b5563;">${p.bio ? p.bio.substring(0, 200) + '...' : ''}</div>
+                                <div style="margin-top:6px; font-size:12px;">
+                                    <strong>Expertise:</strong> ${(p.expertise_areas || []).map(e => '<span style="background:#f3f4f6; padding:1px 6px; border-radius:4px; margin:2px; display:inline-block;">' + e.trim() + '</span>').join('')}
+                                </div>
+                                <div style="margin-top:6px;">${accountBadges}</div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:4px; margin-left:12px;">
+                                <button class="btn btn-primary" onclick="editPersona(${p.id})">Edit</button>
+                                <button class="btn ${p.is_active ? 'btn-warning' : 'btn-success'}" onclick="togglePersona(${p.id}, ${!p.is_active})">${p.is_active ? 'Deactivate' : 'Activate'}</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load personas:', e);
+            }
+        }
+
+        async function editPersona(personaId) {
+            try {
+                const res = await fetch(`/api/personas/${personaId}`);
+                const p = await res.json();
+
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;';
+                modal.innerHTML = `
+                <div style="background:white; border-radius:12px; padding:24px; max-width:700px; width:90%; max-height:90vh; overflow-y:auto;">
+                    <h2 style="margin-bottom:16px;">Edit Persona: ${p.name}</h2>
+                    <form onsubmit="savePersona(event, ${p.id})" style="display:grid; gap:12px;">
+                        <div>
+                            <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Name</label>
+                            <input type="text" id="edit-name" value="${p.name}" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Title (shown on Quora profile)</label>
+                            <input type="text" id="edit-title" value="${p.title}" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Bio</label>
+                            <textarea id="edit-bio" rows="4" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-family:inherit;">${p.bio}</textarea>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Expertise Areas (comma-separated)</label>
+                            <input type="text" id="edit-expertise" value="${p.expertise_areas}" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Writing Style Instructions</label>
+                            <textarea id="edit-style" rows="4" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-family:inherit;">${p.writing_style}</textarea>
+                        </div>
+                        <div style="display:flex; gap:8px; justify-content:flex-end;">
+                            <button type="button" class="btn btn-danger" onclick="this.closest('div[style*=fixed]').remove()">Cancel</button>
+                            <button type="submit" class="btn btn-success">Save Changes</button>
+                        </div>
+                    </form>
+                </div>`;
+                document.body.appendChild(modal);
+                modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+            } catch (e) {
+                console.error('Failed to load persona:', e);
+            }
+        }
+
+        async function savePersona(event, personaId) {
+            event.preventDefault();
+            try {
+                const res = await fetch(`/api/personas/${personaId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('edit-name').value,
+                        title: document.getElementById('edit-title').value,
+                        bio: document.getElementById('edit-bio').value,
+                        expertise_areas: document.getElementById('edit-expertise').value,
+                        writing_style: document.getElementById('edit-style').value,
+                    }),
+                });
+                if (res.ok) {
+                    document.querySelector('div[style*="fixed"]').remove();
+                    loadPersonas();
+                }
+            } catch (e) { console.error('Save failed:', e); }
+        }
+
+        async function togglePersona(personaId, activate) {
+            try {
+                await fetch(`/api/personas/${personaId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: activate }),
+                });
+                loadPersonas();
+            } catch (e) { console.error('Toggle failed:', e); }
+        }
+
+        // --- Account Management ---
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                const container = document.getElementById('accounts-list');
+
+                if (!data.accounts || data.accounts.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No Quora accounts configured. Add one above.</div>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Persona</th><th>Email</th><th>Health</th><th>Posts Today</th><th>Total Posts</th><th>Proxy</th><th>Last Active</th><th>Actions</th></tr></thead><tbody>';
+                for (const a of data.accounts) {
+                    html += `<tr>
+                        <td>${a.persona_name}</td>
+                        <td>${a.email}</td>
+                        <td><span class="badge ${a.health}">${a.health}</span></td>
+                        <td>${a.posts_today}</td>
+                        <td>${a.total_posts}</td>
+                        <td style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis;">${a.proxy_url || '-'}</td>
+                        <td style="font-size:12px;">${a.last_active ? a.last_active.substring(0, 16) : 'Never'}</td>
+                        <td>
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn btn-primary" onclick="editAccount(${a.id})" style="padding:4px 8px; font-size:11px;">Edit</button>
+                                <button class="btn btn-success" onclick="resetAccountHealth(${a.id})" style="padding:4px 8px; font-size:11px;">Reset</button>
+                                <button class="btn btn-danger" onclick="deleteAccount(${a.id})" style="padding:4px 8px; font-size:11px;">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        }
+
+        async function loadPersonaDropdown() {
+            try {
+                const res = await fetch('/api/personas?include_inactive=true');
+                const data = await res.json();
+                const select = document.getElementById('acc-persona-id');
+                select.innerHTML = '<option value="">Select persona...</option>';
+                for (const p of data.personas) {
+                    select.innerHTML += `<option value="${p.id}">${p.name} (${p.slug})</option>`;
+                }
+            } catch (e) { console.error('Failed to load dropdown:', e); }
+        }
+
+        async function addAccount(event) {
+            event.preventDefault();
+            try {
+                const res = await fetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona_id: parseInt(document.getElementById('acc-persona-id').value),
+                        email: document.getElementById('acc-email').value,
+                        password_ref: document.getElementById('acc-password-ref').value,
+                        proxy_url: document.getElementById('acc-proxy').value,
+                        notes: document.getElementById('acc-notes').value,
+                    }),
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    document.getElementById('add-account-form').reset();
+                    loadAccounts();
+                    loadPersonas();
+                } else {
+                    alert(result.detail || 'Failed to add account');
+                }
+            } catch (e) { console.error('Add account failed:', e); }
+        }
+
+        async function editAccount(accountId) {
+            const email = prompt('New email (leave blank to keep current):');
+            const proxy = prompt('New proxy URL (leave blank to keep current):');
+            const notes = prompt('Notes (leave blank to keep current):');
+
+            const body = {};
+            if (email) body.email = email;
+            if (proxy) body.proxy_url = proxy;
+            if (notes) body.notes = notes;
+            if (Object.keys(body).length === 0) return;
+
+            try {
+                await fetch(`/api/accounts/${accountId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                loadAccounts();
+            } catch (e) { console.error('Edit account failed:', e); }
+        }
+
+        async function resetAccountHealth(accountId) {
+            try {
+                await fetch(`/api/accounts/${accountId}/reset-health`, { method: 'POST' });
+                loadAccounts();
+            } catch (e) { console.error('Reset failed:', e); }
+        }
+
+        async function deleteAccount(accountId) {
+            if (!confirm('Are you sure you want to delete this account?')) return;
+            try {
+                await fetch(`/api/accounts/${accountId}`, { method: 'DELETE' });
+                loadAccounts();
+            } catch (e) { console.error('Delete failed:', e); }
+        }
+
+        // --- Review Queue (Tab version) ---
+        async function loadReviewQueueTab() {
+            try {
+                const res = await fetch('/api/answers?status=draft');
+                const data = await res.json();
+                const container = document.getElementById('review-queue-tab');
+
+                if (!data.answers || data.answers.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No answers awaiting review</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const a of data.answers) {
+                    html += `
+                    <div style="border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <a href="${a.question_url}" target="_blank" style="font-weight:600; color:#1a1a2e;">${a.question_title}</a>
+                                <div style="color:#666; font-size:13px; margin-top:4px;">Persona: <strong>${a.persona_name}</strong> | ${a.word_count} words | Created: ${a.created_at ? a.created_at.substring(0, 16) : ''}</div>
+                            </div>
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn btn-success" onclick="reviewAnswer(${a.id}, 'approve')">Approve</button>
+                                <button class="btn btn-danger" onclick="reviewAnswer(${a.id}, 'reject')">Reject</button>
+                                <button class="btn btn-warning" onclick="showRegenerate(${a.id})">Regenerate</button>
+                            </div>
+                        </div>
+                        <div class="answer-preview" style="margin-top:12px; max-height:300px;">${a.content}</div>
+                    </div>`;
+                }
+                container.innerHTML = html;
+            } catch (e) { console.error('Failed:', e); }
+        }
+
+        // --- Questions (Tab version) ---
+        async function loadQuestionsTab() {
+            try {
+                const res = await fetch('/api/questions?limit=50');
+                const data = await res.json();
+                const container = document.getElementById('questions-list-tab');
+
+                if (!data.questions || data.questions.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No questions discovered yet. Click "Run Discovery" to start.</div>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Question</th><th>Category</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                for (const q of data.questions) {
+                    html += `<tr>
+                        <td><a href="${q.url}" target="_blank">${q.title.substring(0, 80)}${q.title.length > 80 ? '...' : ''}</a></td>
+                        <td>${q.category}</td>
+                        <td>${q.relevance_score.toFixed(2)}</td>
+                        <td><span class="badge ${q.status}">${q.status}</span></td>
+                        <td>${q.status === 'discovered' ? `<button class="btn btn-primary" onclick="generateAnswer(${q.id})">Generate</button>` : ''}</td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) { console.error('Failed:', e); }
+        }
         // Load review queue
         async function loadReviewQueue() {
             try {
