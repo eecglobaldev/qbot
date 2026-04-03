@@ -94,8 +94,8 @@ def test_usa_matches_priya_sharma():
 def test_topic_persona_map_completeness():
     """All persona slugs in the map should be valid real EEC team members."""
     valid_slugs = {
-        "amit-jalan", "mili-mehta", "madhav-gupta", "mohita-gupta",
-        "anirudh-gupta", "ridhika-jalan", "priya-sharma", "rahul-mehta",
+        "amit-jalan", "madhav-gupta", "mohita-gupta",
+        "anirudh-gupta", "priya-sharma", "rahul-mehta",
         "anita-desai", "vikram-patel",
     }
     for keyword, slugs in TOPIC_PERSONA_MAP.items():

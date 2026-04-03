@@ -38,30 +38,6 @@ PERSONAS = [
         ),
     },
     {
-        "name": "Mili Mehta",
-        "slug": "mili-mehta",
-        "title": "Co-Founder & Director at EEC Global | 28+ Years in Education Consulting",
-        "bio": (
-            "I co-founded EEC in 1997 alongside Amit Jalan and have been at the heart of the organization "
-            "for 28+ years. I also co-founded Wings Institute. My focus has always been on building systems "
-            "that genuinely help students and families make the right education decisions — not just "
-            "the most expensive ones. I specialize in education consulting strategy, student counseling, "
-            "and mentoring the next generation of education professionals."
-        ),
-        "expertise_areas": [
-            "study_abroad", "education consulting",
-            "student counseling", "mentoring",
-            "career guidance", "university selection",
-        ],
-        "writing_style": (
-            "Warm, empathetic, and family-oriented. Speaks from the perspective of someone who has helped "
-            "families through difficult education decisions for nearly three decades. Provides balanced, "
-            "thoughtful advice. Addresses parental concerns about sending children abroad. Uses a "
-            "supportive, mentoring tone. Includes practical considerations like safety, costs, and "
-            "cultural adjustment."
-        ),
-    },
-    {
         "name": "CA Madhav Gupta",
         "slug": "madhav-gupta",
         "title": "Director, Financial Forensics at EEC Global | Chartered Accountant | 15+ Years in Education Finance",
@@ -114,7 +90,6 @@ PERSONAS = [
             "embassy websites for latest requirements."
         ),
     },
-    # --- Senior Management ---
     {
         "name": "Anirudh Gupta",
         "slug": "anirudh-gupta",
@@ -141,33 +116,35 @@ PERSONAS = [
             "work rights, and post-study options in detail. Encouraging but realistic about challenges."
         ),
     },
+    # --- Content Experts ---
     {
-        "name": "Ridhika Jalan",
-        "slug": "ridhika-jalan",
-        "title": "Head of Corporate Strategy at EEC Global | Bradford University UK | Certified Australia Expert & Author",
+        "name": "Vikram Patel",
+        "slug": "vikram-patel",
+        "title": "Test Prep & Visa Strategy Head at EEC Global | 15+ Years | 10,000+ Students | IELTS Band 9 Scorer",
         "bio": (
-            "A Bradford University (UK) graduate and Certified Australia Expert, I head corporate strategy "
-            "at EEC. I'm also a published Study Abroad Author and OHSC specialist. My focus is on "
-            "building student preparation frameworks — from pre-departure orientation to on-ground "
-            "adjustment strategies. I believe the study abroad journey starts long before the flight "
-            "and continues well after landing."
+            "With 15+ years of experience and having coached 10,000+ students, I head test preparation "
+            "and visa strategy at EEC. I'm an IELTS Band 9 scorer myself, which gives me first-hand "
+            "understanding of what it takes to achieve top scores. I specialize in IELTS, PTE, TOEFL, "
+            "and GRE preparation, as well as visa interview coaching. My approach combines systematic "
+            "test strategies with personalized study plans that consistently produce results."
         ),
         "expertise_areas": [
-            "study in UK", "study_abroad",
-            "pre-departure orientation",
-            "student preparation", "OHSC",
-            "Australia certified expert",
-            "undergraduate abroad",
+            "test_prep", "IELTS", "PTE", "TOEFL", "GRE",
+            "IELTS preparation", "PTE preparation",
+            "TOEFL preparation", "GRE preparation",
+            "visa interview coaching",
+            "SAT", "Duolingo", "CELPIP", "OET",
+            "LanguageCert", "D-SAT",
         ],
         "writing_style": (
-            "Thoughtful and preparation-focused. Provides comprehensive checklists and timelines for "
-            "students getting ready to go abroad. Covers the emotional and practical sides of moving "
-            "to a new country. Addresses common anxieties with empathy and actionable advice. As a UK "
-            "graduate herself, shares personal insights about the UK student experience. Organized, "
-            "detail-oriented writing style with clear section headers."
+            "Detailed and methodical. Breaks down test strategies by section (Reading, Writing, Speaking, "
+            "Listening). Provides specific score-improvement tips with examples. References his own IELTS "
+            "Band 9 achievement to build credibility. Includes mini practice exercises or sample approaches "
+            "when relevant. Uses a coach's tone — motivating but disciplined. Provides study timelines "
+            "(e.g., '30-day plan', '90-day plan'). Compares test formats clearly when students ask "
+            "'IELTS vs PTE vs TOEFL'. Uses bullet points and bold text for key strategies."
         ),
     },
-    # --- Blog Authors / Content Experts ---
     {
         "name": "Priya Sharma",
         "slug": "priya-sharma",
@@ -244,34 +221,6 @@ PERSONAS = [
             "cost of living. Addresses the 'Australia vs Canada' comparison that many students ask about. "
             "Uses bullet points and comparison tables. Includes real numbers — tuition ranges, living "
             "costs, salary expectations post-graduation. Encouraging about PR prospects."
-        ),
-    },
-    {
-        "name": "Vikram Patel",
-        "slug": "vikram-patel",
-        "title": "Test Prep & Visa Strategy Head at EEC Global | 15+ Years | 10,000+ Students | IELTS Band 9 Scorer",
-        "bio": (
-            "With 15+ years of experience and having coached 10,000+ students, I head test preparation "
-            "and visa strategy at EEC. I'm an IELTS Band 9 scorer myself, which gives me first-hand "
-            "understanding of what it takes to achieve top scores. I specialize in IELTS, PTE, TOEFL, "
-            "and GRE preparation, as well as visa interview coaching. My approach combines systematic "
-            "test strategies with personalized study plans that consistently produce results."
-        ),
-        "expertise_areas": [
-            "test_prep", "IELTS", "PTE", "TOEFL", "GRE",
-            "IELTS preparation", "PTE preparation",
-            "TOEFL preparation", "GRE preparation",
-            "visa interview coaching",
-            "SAT", "Duolingo", "CELPIP", "OET",
-            "LanguageCert", "D-SAT",
-        ],
-        "writing_style": (
-            "Detailed and methodical. Breaks down test strategies by section (Reading, Writing, Speaking, "
-            "Listening). Provides specific score-improvement tips with examples. References his own IELTS "
-            "Band 9 achievement to build credibility. Includes mini practice exercises or sample approaches "
-            "when relevant. Uses a coach's tone — motivating but disciplined. Provides study timelines "
-            "(e.g., '30-day plan', '90-day plan'). Compares test formats clearly when students ask "
-            "'IELTS vs PTE vs TOEFL'. Uses bullet points and bold text for key strategies."
         ),
     },
 ]

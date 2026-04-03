@@ -32,8 +32,8 @@ TOPIC_PERSONA_MAP: dict[str, list[str]] = {
     # Study in USA / Canada / UK — Priya Sharma (Senior USA Consultant, 98% visa rate)
     "study in usa": ["priya-sharma", "amit-jalan"],
     "study in canada": ["priya-sharma"],
-    "study in uk": ["priya-sharma", "ridhika-jalan"],
-    "study in the uk": ["priya-sharma", "ridhika-jalan"],
+    "study in uk": ["priya-sharma"],
+    "study in the uk": ["priya-sharma"],
     "f-1 visa": ["priya-sharma"],
     "f1 visa": ["priya-sharma"],
     "sop": ["priya-sharma"],
@@ -77,16 +77,12 @@ TOPIC_PERSONA_MAP: dict[str, list[str]] = {
     "new zealand": ["anita-desai"],
     "bond university": ["anirudh-gupta"],
 
-    # General study abroad — Amit Jalan (Founder), Mili Mehta, Ridhika Jalan
+    # General study abroad — Amit Jalan (Founder)
     "study abroad": ["amit-jalan", "priya-sharma"],
     "which country": ["amit-jalan", "priya-sharma"],
     "best country": ["amit-jalan", "priya-sharma"],
-    "career counseling": ["amit-jalan", "mili-mehta"],
-    "career guidance": ["mili-mehta"],
-    "parent": ["mili-mehta"],
-    "pre-departure": ["ridhika-jalan"],
-    "packing": ["ridhika-jalan"],
-    "preparation abroad": ["ridhika-jalan"],
+    "career counseling": ["amit-jalan"],
+    "career guidance": ["amit-jalan"],
 
     # Visa — Mohita Gupta (VP Visa Strategy, ex-Citibank)
     "visa": ["mohita-gupta"],
