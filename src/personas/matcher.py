@@ -7,79 +7,114 @@ from sqlalchemy.orm import Session
 from src.database import Persona, Question
 
 
-# Keyword-to-persona mapping for fast matching
+# Keyword-to-persona mapping — maps to real EEC team member slugs
 TOPIC_PERSONA_MAP: dict[str, list[str]] = {
-    # Test Prep - IELTS & PTE
-    "ielts": ["priya-sharma"],
-    "pte": ["priya-sharma"],
-    "pte academic": ["priya-sharma"],
-    "pte core": ["priya-sharma"],
-    "band score": ["priya-sharma"],
-    "english proficiency": ["priya-sharma", "ananya-krishnan"],
+    # Test Prep — Vikram Patel (Head of Test Prep, IELTS Band 9)
+    "ielts": ["vikram-patel"],
+    "pte": ["vikram-patel"],
+    "pte academic": ["vikram-patel"],
+    "pte core": ["vikram-patel"],
+    "band score": ["vikram-patel"],
+    "toefl": ["vikram-patel"],
+    "gre": ["vikram-patel"],
+    "sat": ["vikram-patel"],
+    "d-sat": ["vikram-patel"],
+    "gmat": ["vikram-patel"],
+    "duolingo": ["vikram-patel"],
+    "celpip": ["vikram-patel"],
+    "languagecert": ["vikram-patel"],
+    "oet": ["vikram-patel"],
+    "english proficiency": ["vikram-patel"],
+    "test preparation": ["vikram-patel"],
+    "quantitative": ["vikram-patel"],
+    "analytical writing": ["vikram-patel"],
 
-    # Test Prep - GRE & SAT
-    "gre": ["rahul-kapoor"],
-    "sat": ["rahul-kapoor"],
-    "d-sat": ["rahul-kapoor"],
-    "gmat": ["rahul-kapoor"],
-    "quantitative": ["rahul-kapoor"],
-    "analytical writing": ["rahul-kapoor"],
+    # Study in USA / Canada / UK — Priya Sharma (Senior USA Consultant, 98% visa rate)
+    "study in usa": ["priya-sharma", "amit-jalan"],
+    "study in canada": ["priya-sharma"],
+    "study in uk": ["priya-sharma", "ridhika-jalan"],
+    "study in the uk": ["priya-sharma", "ridhika-jalan"],
+    "f-1 visa": ["priya-sharma"],
+    "f1 visa": ["priya-sharma"],
+    "sop": ["priya-sharma"],
+    "statement of purpose": ["priya-sharma"],
+    "lor": ["priya-sharma"],
+    "university admission": ["priya-sharma", "amit-jalan"],
+    "scholarship": ["priya-sharma", "madhav-gupta"],
+    "mba abroad": ["priya-sharma", "amit-jalan"],
+    "ms abroad": ["priya-sharma", "amit-jalan"],
+    "undergraduate abroad": ["priya-sharma"],
 
-    # Test Prep - TOEFL, Duolingo, Others
-    "toefl": ["ananya-krishnan"],
-    "duolingo": ["ananya-krishnan"],
-    "celpip": ["ananya-krishnan"],
-    "languagecert": ["ananya-krishnan"],
-    "oet": ["ananya-krishnan"],
+    # Study in Europe / Germany — Rahul Mehta (Europe specialist, 2500+ students)
+    "study in germany": ["rahul-mehta"],
+    "study in europe": ["rahul-mehta"],
+    "study in france": ["rahul-mehta"],
+    "study in ireland": ["rahul-mehta"],
+    "study in italy": ["rahul-mehta"],
+    "study in netherlands": ["rahul-mehta"],
+    "schengen": ["rahul-mehta"],
+    "free tuition": ["rahul-mehta"],
+    "tuition free": ["rahul-mehta"],
+    "mim": ["rahul-mehta"],
+    "masters in management": ["rahul-mehta"],
+    "mbbs abroad": ["rahul-mehta"],
+    "mbbs": ["rahul-mehta"],
+    "neet": ["rahul-mehta"],
 
-    # Study Abroad
-    "study abroad": ["sneha-patel", "amit-jalan"],
-    "study in canada": ["sneha-patel"],
-    "study in uk": ["sneha-patel"],
-    "study in australia": ["sneha-patel"],
-    "study in ireland": ["sneha-patel"],
-    "study in usa": ["amit-jalan", "sneha-patel"],
-    "study in germany": ["meera-iyer", "sneha-patel"],
-    "mba abroad": ["amit-jalan"],
-    "ms abroad": ["amit-jalan", "sneha-patel"],
-    "mim": ["sneha-patel"],
-    "masters in management": ["sneha-patel"],
-    "undergraduate abroad": ["sneha-patel", "rahul-kapoor"],
-    "sop": ["sneha-patel"],
-    "statement of purpose": ["sneha-patel"],
-    "lor": ["sneha-patel"],
-    "university admission": ["sneha-patel", "amit-jalan"],
-    "scholarship": ["sneha-patel", "nikhil-mehta"],
+    # Study in Australia / NZ — Anita Desai + Anirudh Gupta
+    "study in australia": ["anita-desai", "anirudh-gupta"],
+    "study in new zealand": ["anita-desai"],
+    "australia": ["anita-desai", "anirudh-gupta"],
+    "subclass 500": ["anita-desai"],
+    "australian pr": ["anita-desai", "anirudh-gupta"],
+    "pr in australia": ["anita-desai", "anirudh-gupta"],
+    "pr pathway": ["anita-desai", "anirudh-gupta"],
+    "permanent residency": ["anita-desai", "anirudh-gupta"],
+    "group of eight": ["anita-desai", "anirudh-gupta"],
+    "go8": ["anirudh-gupta"],
+    "genuine student": ["anirudh-gupta"],
+    "gs requirement": ["anirudh-gupta"],
+    "new zealand": ["anita-desai"],
+    "bond university": ["anirudh-gupta"],
 
-    # MBBS
-    "mbbs": ["meera-iyer"],
-    "medical": ["meera-iyer"],
-    "neet": ["meera-iyer"],
-    "nmc": ["meera-iyer"],
+    # General study abroad — Amit Jalan (Founder), Mili Mehta, Ridhika Jalan
+    "study abroad": ["amit-jalan", "priya-sharma"],
+    "which country": ["amit-jalan", "priya-sharma"],
+    "best country": ["amit-jalan", "priya-sharma"],
+    "career counseling": ["amit-jalan", "mili-mehta"],
+    "career guidance": ["mili-mehta"],
+    "parent": ["mili-mehta"],
+    "pre-departure": ["ridhika-jalan"],
+    "packing": ["ridhika-jalan"],
+    "preparation abroad": ["ridhika-jalan"],
 
-    # Visa
-    "visa": ["vikram-desai"],
-    "student visa": ["vikram-desai"],
-    "spouse visa": ["vikram-desai"],
-    "tourist visa": ["vikram-desai"],
-    "visa extension": ["vikram-desai"],
-    "visa interview": ["vikram-desai"],
-    "immigration": ["vikram-desai"],
-    "visa rejection": ["vikram-desai"],
+    # Visa — Mohita Gupta (VP Visa Strategy, ex-Citibank)
+    "visa": ["mohita-gupta"],
+    "student visa": ["mohita-gupta"],
+    "spouse visa": ["mohita-gupta"],
+    "tourist visa": ["mohita-gupta"],
+    "visa extension": ["mohita-gupta"],
+    "visa interview": ["mohita-gupta", "vikram-patel"],
+    "immigration": ["mohita-gupta"],
+    "visa rejection": ["mohita-gupta"],
+    "visa refusal": ["mohita-gupta"],
+    "visa appeal": ["mohita-gupta"],
 
-    # Education Loan & Finance
-    "education loan": ["nikhil-mehta"],
-    "student loan": ["nikhil-mehta"],
-    "loan": ["nikhil-mehta"],
-    "financial": ["nikhil-mehta"],
-    "cost of studying": ["nikhil-mehta"],
-    "tuition fee": ["nikhil-mehta"],
-    "forex": ["nikhil-mehta"],
+    # Education Loan & Finance — CA Madhav Gupta (Chartered Accountant)
+    "education loan": ["madhav-gupta"],
+    "student loan": ["madhav-gupta"],
+    "loan": ["madhav-gupta"],
+    "financial": ["madhav-gupta"],
+    "cost of studying": ["madhav-gupta"],
+    "tuition fee": ["madhav-gupta"],
+    "forex": ["madhav-gupta"],
+    "fund": ["madhav-gupta"],
+    "budget": ["madhav-gupta"],
 
     # Language
-    "spoken english": ["priya-sharma", "ananya-krishnan"],
-    "french": ["ananya-krishnan"],
-    "german": ["ananya-krishnan", "meera-iyer"],
+    "spoken english": ["vikram-patel"],
+    "french": ["rahul-mehta"],
+    "german": ["rahul-mehta"],
 }
 
 
@@ -113,11 +148,11 @@ def match_persona_to_question(question: Question, db: Session) -> Persona | None
     # Also match on question category
     category = question.category.lower()
     category_persona_map = {
-        "test_prep": ["priya-sharma", "rahul-kapoor", "ananya-krishnan"],
-        "study_abroad": ["sneha-patel", "amit-jalan"],
-        "visa": ["vikram-desai"],
-        "language": ["ananya-krishnan", "priya-sharma"],
-        "education_loan": ["nikhil-mehta"],
+        "test_prep": ["vikram-patel"],
+        "study_abroad": ["amit-jalan", "priya-sharma"],
+        "visa": ["mohita-gupta"],
+        "language": ["vikram-patel"],
+        "education_loan": ["madhav-gupta"],
     }
     for slug in category_persona_map.get(category, []):
         persona_scores[slug] = persona_scores.get(slug, 0) + 1
