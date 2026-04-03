@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # API Keys
-    anthropic_api_key: str = ""
+    gemini_api_key: str = ""
 
     # Database
     database_url: str = "sqlite+aiosqlite:///data/qbot.db"
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Answer generation
     answer_min_words: int = 200
     answer_max_words: int = 800
-    claude_model: str = "claude-sonnet-4-20250514"
+    gemini_model: str = "gemini-2.5-pro-preview-05-06"
 
     # Question discovery keywords organized by category
     @property

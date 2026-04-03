@@ -1,9 +1,9 @@
-"""Generate answers using Claude API with persona-appropriate voice."""
+"""Generate answers using Google Gemini API with persona-appropriate voice."""
 
 import logging
 from datetime import datetime, timezone
 
-import anthropic
+from google import genai
 
 from src.config import settings
 from src.database import Answer, Persona, Question
@@ -15,40 +15,45 @@ def _count_words(text: str) -> int:
     return len(text.split())
 
 
+def _get_client() -> genai.Client:
+    """Create a Gemini API client."""
+    return genai.Client(api_key=settings.gemini_api_key)
+
+
 def generate_answer(question: Question, persona: Persona) -> Answer:
     """Generate an answer for a question using the specified persona.
 
-    Uses Claude API to generate a high-quality, persona-appropriate answer.
+    Uses Google Gemini API to generate a high-quality, persona-appropriate answer.
     Returns an Answer object (not yet committed to DB).
     """
     from src.generation.prompt_builder import build_answer_prompt
 
     prompt = build_answer_prompt(question, persona)
-
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = _get_client()
 
     logger.info(f"Generating answer for Q#{question.id} '{question.title[:60]}...' as {persona.name}")
 
-    message = client.messages.create(
-        model=settings.claude_model,
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
+    response = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=prompt,
     )
 
-    content = message.content[0].text.strip()
+    content = response.text.strip()
     word_count = _count_words(content)
 
     # Validate answer quality
     if word_count < settings.answer_min_words:
         logger.warning(f"Answer too short ({word_count} words), regenerating...")
-        # Retry with explicit length instruction
-        retry_prompt = prompt + f"\n\nIMPORTANT: Your previous answer was only {word_count} words. Please write at least {settings.answer_min_words} words while maintaining quality."
-        message = client.messages.create(
-            model=settings.claude_model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": retry_prompt}],
+        retry_prompt = (
+            prompt
+            + f"\n\nIMPORTANT: Your previous answer was only {word_count} words. "
+            f"Please write at least {settings.answer_min_words} words while maintaining quality."
         )
-        content = message.content[0].text.strip()
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=retry_prompt,
+        )
+        content = response.text.strip()
         word_count = _count_words(content)
 
     answer = Answer(
@@ -89,12 +94,11 @@ Please rewrite the answer incorporating this feedback while maintaining the pers
 Write ONLY the revised answer text.
 """
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = _get_client()
 
-    message = client.messages.create(
-        model=settings.claude_model,
-        max_tokens=2000,
-        messages=[{"role": "user", "content": revision_prompt}],
+    response = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=revision_prompt,
     )
 
-    return message.content[0].text.strip()
+    return response.text.strip()
